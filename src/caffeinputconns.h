@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed), _segmentation(cii._segmentation) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -80,6 +80,8 @@ namespace dd
     std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
     bool _embed = false; /**< whether model is using an input embedding layer. */
+    int _sequence_txt = -1; /**< sequence of txt input connector. */
+    int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
@@ -138,6 +140,7 @@ namespace dd
 
     void init(const APIData &ad)
     {
+      LOG(INFO) << "init->" <<"ImgCaffeInputFileConn::init(ad)"<<"\n";
       ImgInputFileConn::init(ad);
     }
 
@@ -167,12 +170,16 @@ namespace dd
 	    }
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;
+      LOG(INFO) << "meanfullname" <<meanfullname<<"\n";
+      LOG(INFO) << "_data_mean.count()" <<_data_mean.count() << "_has_mean_file"<< _has_mean_file<<"\n";
 	  if (_data_mean.count() == 0 && _has_mean_file)
 	    {
+          
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
 	      _data_mean.FromProto(blob_proto);
 	      mean = _data_mean.mutable_cpu_data();
+          LOG(INFO) << "mean:" <<mean<<"\n";
 	    }
 	  if (!_db_fname.empty())
 	    {
@@ -187,6 +194,10 @@ namespace dd
 	      caffe::CVMatToDatum(this->_images.at(i),&datum);
 	      if (!_test_labels.empty())
 		datum.set_label(_test_labels.at(i));
+        LOG(INFO) << "_has_mean_scalar"<< _has_mean_scalar<<"\n";
+        LOG(INFO) << "_data_mean.count()"<< _data_mean.count()<<"\n";
+        LOG(INFO) << "mean:"<< mean<<"\n";
+        LOG(INFO) << "mean_values:"<< _mean<<"\n";
 	      if (_data_mean.count() != 0)
 		{
 		  int height = datum.height();
@@ -198,11 +209,27 @@ namespace dd
 			  int data_index = (c*height+h)*width+w;
 			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
 			  datum.add_float_data(datum_element - mean[data_index]);
+              //LOG(INFO) << "mean[data_index]:"<<mean[data_index]<<"  --data_index:"<<data_index<<"\n";
 			}
 		  datum.clear_data();
 		}
-	      else if (_has_mean_scalar)
+	      //else if (_has_mean_scalar)
+          else if (1)
 		{
+          // modify by lg  2017-10-11 end
+          std::vector<float>temp_mean;
+          for(int i=0;i<datum.channels();++i)
+          {
+              temp_mean.push_back(0);
+          }
+          temp_mean[0] = 104;
+          temp_mean[1] = 117;
+          temp_mean[2] = 123;
+          LOG(INFO) << "datum.channels():"<< datum.channels()<<"\n";
+          LOG(INFO) << "temp_mean0:"<< temp_mean[0]<<"\n";
+          LOG(INFO) << "temp_mean1:"<< temp_mean[1]<<"\n";
+          LOG(INFO) << "temp_mean2:"<< temp_mean[2]<<"\n";
+          // modify by lg  2017-10-11 end
 		  int height = datum.height();
 		  int width = datum.width();
 		  for (int c=0;c<datum.channels();++c)
@@ -211,19 +238,22 @@ namespace dd
 			{
 			  int data_index = (c*height+h)*width+w;
 			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
-			  datum.add_float_data(datum_element - _mean[c]);
+			  //datum.add_float_data(datum_element - _mean[c]);
+              datum.add_float_data(datum_element - temp_mean[c]);
 			}
 		  datum.clear_data();
 		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
 	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
+          LOG(INFO) << "_imgs_size.insert" << "\n";
 	    }
 	  this->_images.clear();
 	  this->_images_size.clear();
 	}
       else
 	{
+	  _shuffle = true;
 	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
@@ -659,6 +689,8 @@ namespace dd
 	_sparse = true;
       if (ad.has("embedding") && ad.get("embedding").get<bool>())
 	_embed = true;
+      _sequence_txt = _sequence;
+      _max_embed_id = _alphabet.size() + 1; // +1 as offset to null index
     }
 
     int channels() const
@@ -955,7 +987,7 @@ namespace dd
 		      val = static_cast<float>(vals[c]+1.0); // +1 as offset to null index
 		    datum.add_float_data(val);
 		  }
-		datum.set_height(_sequence); //TODO: height to sequence and channels to 1 ?
+		datum.set_height(_sequence);
 		datum.set_width(1);
 	      }
 	  }

@@ -453,7 +453,6 @@ namespace dd
     
     // predict
     std::vector<float> preds;
-    _learner->Configure(_params.cfg);
     _learner->Predict(inputc._m.get(),_params.pred_margin,&preds,_params.ntree_limit);
 
     // results
@@ -520,7 +519,6 @@ namespace dd
 	ad_res.add("nclasses",_nclasses);
 	bool output_margin = false;
 	std::vector<float> out_preds;
-	learner->Configure(_params.cfg);
 	learner->Predict(dtest,output_margin,&out_preds);
 
 	int nclasses = _nclasses;

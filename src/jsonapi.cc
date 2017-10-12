@@ -554,7 +554,7 @@ namespace dd
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
-    bool has_measure = ad_data.getobj("parameters").getobj("output").has("measure");
+    /*bool has_measure = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/predict",jpred.GetAllocator());
     jhead.AddMember("service",d["service"],jpred.GetAllocator());
@@ -565,7 +565,7 @@ namespace dd
       {
 	jpred.AddMember("body",jout,jpred.GetAllocator());
 	return jpred;
-      }
+      }*/
     JVal jbody(rapidjson::kObjectType);
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());

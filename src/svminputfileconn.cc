@@ -106,8 +106,6 @@ namespace dd
 	    throw InputConnectorBadParamException("error reading SVM format line: " + content);
 	  }
       }
-      if (vals.empty())
-        throw InputConnectorBadParamException("Issue while reading svm example (index might be out of boundsi)");
   }
   
   void SVMInputFileConn::read_svm(const APIData &ad,

@@ -106,10 +106,16 @@ namespace dd
 	  LOG(ERROR) << "empty image";
 	  return -1;
 	}
+      LOG(INFO) << "fname:" << fname << "\n";
       _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
       cv::Size size(_width,_height);
       cv::Mat rimg;
-      cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+      //cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+      cv::resize(img,rimg,size,0,0,CV_INTER_LINEAR);   //CV_INTER_NN   CV_INTER_LINEAR  CV_INTER_AREA   CV_INTER_CUBIC 
+      // modify by lg 2017-10-09  start
+      cv::imwrite("/home/temp.bmp",rimg);
+      LOG(INFO) << "read " << " images\n";
+      // modify by lg 2017-10-09  start
       _imgs.push_back(rimg);
       return 0;
     }
@@ -226,26 +232,47 @@ namespace dd
 
     void init(const APIData &ad)
     {
+      LOG(INFO) << "init->" <<"ImgInputFileConn::init(ad)"<<"\n";
       fillup_parameters(ad);
     }
 
     void fillup_parameters(const APIData &ad)
     {
+       LOG(INFO) << "init->" <<"fillup_parameters"<<"\n";
       // optional parameters.
       if (ad.has("width"))
-	_width = ad.get("width").get<int>();
+      {
+	     _width = ad.get("width").get<int>();
+         LOG(INFO) << "ad.has width" << "\n";
+      }
       if (ad.has("height"))
-	_height = ad.get("height").get<int>();
+      {
+          LOG(INFO) << "ad.has height" << "\n";
+	      _height = ad.get("height").get<int>();
+      }
       if (ad.has("bw"))
-	_bw = ad.get("bw").get<bool>();
+      {
+          LOG(INFO) << "ad.has bw" << "\n";
+	      _bw = ad.get("bw").get<bool>();
+      }
       if (ad.has("shuffle"))
-	_shuffle = ad.get("shuffle").get<bool>();
+      {
+          LOG(INFO) << "ad.has shuffle" << "\n";
+	      _shuffle = ad.get("shuffle").get<bool>();
+      }
       if (ad.has("seed"))
-	_seed = ad.get("seed").get<int>();
+      {
+          LOG(INFO) << "ad.has seed" << "\n";
+	      _seed = ad.get("seed").get<int>();
+      }
       if (ad.has("test_split"))
-	_test_split = ad.get("test_split").get<double>();
+      {
+          LOG(INFO) << "ad.has test_split" << "\n";
+	      _test_split = ad.get("test_split").get<double>();
+      }
       if (ad.has("mean"))
-	{
+	  {
+      LOG(INFO) << "ad.has mean" << "\n";
 	  std::vector<int> vm = ad.get("mean").get<std::vector<int>>();
 	  if (vm.size() == 3)
 	    {
@@ -261,7 +288,7 @@ namespace dd
 	      _mean = cv::Scalar(vm.at(0));
 	      _has_mean_scalar = true;
 	    }
-	}
+	  }
     }
     
     int feature_size() const

@@ -101,8 +101,8 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       BUILD_IN_SOURCE 1
       )
   endif()
-  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/genfiles)
-  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
+  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/genfiles)
+  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
   include_directories("${TF_INC_DIR}")
 endif() # USE_TF
 
@@ -111,6 +111,10 @@ find_package(OpenCV REQUIRED)
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
+# add svm opencv lib
+#add_executable(deepdetect ${PROJECT_SOURCE_DIR}/src/httpjsonapu.cc  ${PROJECT_SOURCE_DIR}/src/svm/src/svm_own.cpp)
+# Link your application with OpenCV libraries
+link_libraries(${OpenCV_LIBS})
 
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
@@ -214,13 +218,14 @@ if (USE_XGBOOST)
   add_definitions(-DUSE_XGBOOST)
   if (CUDA_FOUND AND USE_XGBOOST_GPU)
     add_definitions(-DUSE_XGBOOST_GPU)
-#    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
+    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
       xgboost
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir build && cd build &&
+      UPDATE_COMMAND git submodule foreach git pull origin master
+      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/xgb/xgb_cmakelist_fix.patch && mkdir build && cd build &&
       cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -231,7 +236,8 @@ if (USE_XGBOOST)
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND mkdir build && cd build && cmake .. && make -j ${N}
+      UPDATE_COMMAND git submodule foreach git pull origin master
+      CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/xgb/xgb_cmakelist_fix.patch && mkdir build && cd build && cmake .. && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
